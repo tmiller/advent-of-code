@@ -1,0 +1,158 @@
+module Keypad exposing (Model, Msg, init, update, subscriptions, view)
+
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
+
+
+type alias Model =
+    { code : List String
+    , key : List Int
+    }
+
+
+initModel : Model
+initModel =
+    { code = actualCode
+    , key = [ 5 ]
+    }
+
+
+init : ( Model, Cmd Msg )
+init =
+    ( initModel, Cmd.none )
+
+
+type Msg
+    = NoOp
+    | Step
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Step ->
+            let
+                solvedDigits =
+                    List.foldl solveDigit model.key model.code
+
+                digits =
+                    List.reverse solvedDigits
+            in
+                ( { model
+                    | key = digits
+                    , code = []
+                  }
+                , Cmd.none
+                )
+
+
+solveDigit : String -> List Int -> List Int
+solveDigit codeChunk seed =
+    case seed of
+        x :: xs ->
+            List.foldl moveState x (String.toList codeChunk) :: x :: xs
+
+        [] ->
+            []
+
+
+moveState : Char -> Int -> Int
+moveState dir digit =
+    let
+        moveUp =
+            if digit > 3 then
+                digit - 3
+            else
+                digit
+
+        moveRight =
+            if digit % 3 == 0 then
+                digit
+            else
+                digit + 1
+
+        moveDown =
+            if digit < 7 then
+                digit + 3
+            else
+                digit
+
+        moveLeft =
+            if List.any ((==) digit) [ 1, 4, 7 ] then
+                digit
+            else
+                digit - 1
+    in
+        case dir of
+            'U' ->
+                moveUp
+
+            'R' ->
+                moveRight
+
+            'D' ->
+                moveDown
+
+            'L' ->
+                moveLeft
+
+            _ ->
+                digit
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
+
+
+view : Model -> Html Msg
+view model =
+    div []
+        [ div []
+            [ button [ onClick Step ] [ text "Step" ]
+            ]
+        , viewCode model.code
+        , viewKey model.key
+        ]
+
+
+viewCode : List String -> Html Msg
+viewCode code =
+    let
+        codeItems =
+            List.map (\x -> li [] [ text x ]) code
+    in
+        ul [] codeItems
+
+
+viewKey : List Int -> Html Msg
+viewKey code =
+    case code of
+        x :: xs ->
+            ul [] (List.map (\y -> li [] [ text (toString y) ]) xs)
+
+        [] ->
+            ul [] []
+
+
+testCode : List String
+testCode =
+    [ "ULL"
+    , "RRDDD"
+    , "LURDL"
+    , "UUUD"
+    ]
+
+
+actualCode : List String
+actualCode =
+    [ "DLRURUDLULRDRUDDRLUUUDLDLDLRLRRDRRRLLLLLDDRRRDRRDRRRLRRURLRDUULRLRRDDLULRLLDUDLULURRLRLDUDLURURLDRDDULDRDRDLDLLULULLDDLRRUDULLUULRRLLLURDRLDDLDDLDRLRRLLRURRUURRRRLUDLRDDDDRDULRLLDDUURDUDRLUDULLUDLUDURRDRDUUUUDDUDLLLRLUULRUURDLRLLRRLRLLDLLRLLRRRURLRRLURRLDLLLUUDURUDDLLUURRDRDRRDLLDDLLRDRDRRLURLDLDRDLURLDULDRURRRUDLLULDUDRURULDUDLULULRRRUDLUURRDURRURRLRRLLRDDUUUUUDUULDRLDLLRRUDRRDULLLDUDDUDUURLRDLULUUDLDRDUUUDDDUDLDURRULUULUUULDRUDDLLLDLULLRLRLUDULLDLLRLDLDDDUUDURDDDLURDRRDDLDRLLRLRR"
+    , "RLDUDURDRLLLLDDRRRURLLLRUUDDLRDRDDDUDLLUDDLRDURLDRDLLDRULDDRLDDDRLDRDDDRLLULDURRRLULDRLRDRDURURRDUDRURLDRLURDRLUULLULLDLUDUDRDRDDLDDDDRDURDLUDRDRURUDDLLLRLDDRURLLUDULULDDLLLDLUDLDULUUDLRLURLDRLURURRDUUDLRDDDDDRLDULUDLDDURDLURLUURDLURLDRURRLDLLRRUDRUULLRLDUUDURRLDURRLRUULDDLDLDUUDDRLDLLRRRUURLLUURURRURRLLLUDLDRRDLUULULUDDULLUDRLDDRURDRDUDULUDRLRRRUULLDRDRLULLLDURURURLURDLRRLLLDRLDUDLLLLDUUURULDDLDLLRRUDDDURULRLLUDLRDLUUDDRDDLLLRLUURLDLRUURDURDDDLLLLLULRRRURRDLUDLUURRDRLRUDUUUURRURLRDRRLRDRDULLDRDRLDURDDUURLRUDDDDDLRLLRUDDDDDURURRLDRRUUUDLURUUDRRDLLULDRRLRRRLUUUD"
+    , "RDRURLLUUDURURDUUULLRDRLRRLRUDDUDRURLLDLUUDLRLLDDURRURLUDUDDURLURLRRURLLURRUDRUDLDRLLURLRUUURRUDDDURRRLULLLLURDLRLLDDRLDRLLRRDLURDLRDLDUDRUULLDUUUDLURRLLRUDDDUUURLURUUDRLRULUURLLRLUDDLLDURULLLDURDLULDLDDUDULUDDULLRDRURDRRLLDLDDDDRUDLDRRLLLRLLLRRULDLRLRLRLLDLRDRDLLUDRDRULDUURRDDDRLLRLDLDRDUDRULUDRDLDLDDLLRULURLLURDLRRDUDLULLDLULLUDRRDDRLRURRLDUDLRRUUDLDRLRLDRLRRDURRDRRDDULURUUDDUUULRLDRLLDURRDLUULLUDRDDDLRUDLRULLDDDLURLURLRDRLLURRRUDLRRLURDUUDRLRUUDUULLRUUUDUUDDUURULDLDLURLRURLRUDLULLULRULDRDRLLLRRDLU"
+    , "RRRRDRLUUULLLRLDDLULRUUURRDRDRURRUURUDUULRULULRDRLRRLURDRRRULUUULRRUUULULRDDLLUURRLLDUDRLRRLDDLDLLDURLLUDLDDRRURLDLULRDUULDRLRDLLDLRULLRULLUDUDUDDUULDLUUDDLUDDUULLLLLURRDRULURDUUUDULRUDLLRUUULLUULLLRUUDDRRLRDUDDRULRDLDLLLLRLDDRRRULULLLDLRLURRDULRDRDUDDRLRLDRRDLRRRLLDLLDULLUDDUDDRULLLUDDRLLRRRLDRRURUUURRDLDLURRDLURULULRDUURLLULDULDUDLLULDDUURRRLDURDLUDURLDDRDUDDLLUULDRRLDLLUDRDURLLDRLDDUDURDLUUUUURRUULULLURLDUUULLRURLLLUURDULLUULDRULLUULRDRUULLRUDLDDLRLURRUUDRLRRRULRUUULRULRRLDLUDRRLL"
+    , "ULRLDLLURDRRUULRDUDDURDDDLRRRURLDRUDDLUDDDLLLRDLRLLRRUUDRRDRUULLLULULUUDRRRDRDRUUUUULRURUULULLULDULURRLURUDRDRUDRURURUDLDURUDUDDDRLRLLLLURULUDLRLDDLRUDDUUDURUULRLLLDDLLLLRRRDDLRLUDDUULRRLLRDUDLLDLRRUUULRLRDLRDUDLLLDLRULDRURDLLULLLRRRURDLLUURUDDURLDUUDLLDDRUUDULDRDRDRDDUDURLRRRRUDURLRRUDUDUURDRDULRLRLLRLUDLURUDRUDLULLULRLLULRUDDURUURDLRUULDURDRRRLLLLLUUUULUULDLDULLRURLUDLDRLRLRLRDLDRUDULDDRRDURDDULRULDRLRULDRLDLLUDLDRLRLRUDRDDR"
+    ]
