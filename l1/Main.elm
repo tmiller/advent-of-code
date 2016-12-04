@@ -3,126 +3,66 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (..)
+import Tuple exposing (first, second)
+import Array
 
 
-type Direction
+main =
+    beginnerProgram
+        { model = model
+        , view = view
+        , update = update
+        }
+
+
+type CardinalDirection
     = North
     | South
     | East
     | West
 
 
-type Instruction
-    = Right Int
-    | Left Int
+type Direction
+    = Right
+    | Left
 
 
-type alias Location =
-    { x : Int, y : Int }
+type alias Point =
+    ( Int, Int )
+
+
+type alias Instruction =
+    ( Direction, Int )
+
+
+type alias CardinalInstruction =
+    ( CardinalDirection, Int )
 
 
 type alias Model =
-    { actor : Actor
-    , instructions : List Instruction
-    }
-
-
-type alias Actor =
-    { direction : Direction
-    , location : Location
+    { answer1 : Point
+    , answer2 : Point
     }
 
 
 type Msg
     = NoOp
     | Travel
-    | Step
 
 
-initModel : Model
-initModel =
-    Model (Actor North (Location 0 0)) instSet4
+origin : Point
+origin =
+    ( 0, 0 )
 
 
-main =
-    beginnerProgram
-        { model = initModel
-        , view = view
-        , update = update
-        }
+model : Model
+model =
+    Model origin origin
 
 
-turn : Instruction -> Actor -> ( Actor, Int )
-turn inst actor =
-    let
-        leftMapping =
-            case actor.direction of
-                North ->
-                    West
-
-                South ->
-                    East
-
-                East ->
-                    North
-
-                West ->
-                    South
-
-        rightMapping =
-            case actor.direction of
-                North ->
-                    East
-
-                South ->
-                    West
-
-                East ->
-                    South
-
-                West ->
-                    North
-
-        ( newDirection, blocks ) =
-            case inst of
-                Left blocks ->
-                    ( leftMapping, blocks )
-
-                Right blocks ->
-                    ( rightMapping, blocks )
-
-        newActor =
-            { actor | direction = newDirection }
-    in
-        ( newActor, blocks )
-
-
-move : Actor -> Int -> Actor
-move actor blocks =
-    let
-        location =
-            actor.location
-
-        newLocation =
-            case actor.direction of
-                North ->
-                    { location | y = location.y + blocks }
-
-                South ->
-                    { location | y = location.y - blocks }
-
-                East ->
-                    { location | x = location.x + blocks }
-
-                West ->
-                    { location | x = location.x - blocks }
-    in
-        { actor | location = newLocation }
-
-
-step : Instruction -> Actor -> Actor
-step inst =
-    turn inst >> uncurry move
+(>>>) : (a -> b -> c) -> (b -> c -> d) -> a -> b -> d
+(>>>) fx gx a b =
+    (fx a b) |> (gx b)
 
 
 update : Msg -> Model -> Model
@@ -132,275 +72,342 @@ update msg model =
             model
 
         Travel ->
-            { model
-                | actor = List.foldl step model.actor model.instructions
-                , instructions = []
-            }
+            let
+                lastPoint =
+                    List.scanl translateInstruction ( North, 0 ) instructions
+                        |> List.foldl (move >>> (++)) [ origin ]
+                        |> lastItem
 
-        Step ->
-            case model.instructions of
-                x :: xs ->
-                    { model
-                        | actor = step x model.actor
-                        , instructions = xs
-                    }
+                firstIntersection =
+                    List.scanl translateInstruction ( North, 0 ) instructions
+                        |> List.foldl (move >>> (++)) [ origin ]
+                        |> findIntersection
+            in
+                case ( lastPoint, firstIntersection ) of
+                    ( Just a1, Just a2 ) ->
+                        { model | answer1 = a1, answer2 = a2 }
 
-                [] ->
-                    model
+                    ( Just a1, Nothing ) ->
+                        { model | answer1 = a1 }
+
+                    ( Nothing, Just a2 ) ->
+                        { model | answer2 = a2 }
+
+                    ( Nothing, Nothing ) ->
+                        model
+
+
+findIntersection : List Point -> Maybe Point
+findIntersection list =
+    case list of
+        x :: xs ->
+            if List.member x xs then
+                Just x
+            else
+                findIntersection xs
+
+        [] ->
+            Nothing
 
 
 view : Model -> Html Msg
 view model =
+    div []
+        [ button [ onClick Travel ] [ text "Travel" ]
+        , showPoint model.answer1
+        , showPoint model.answer2
+        ]
+
+
+showPoint : Point -> Html Msg
+showPoint point =
+    div []
+        [ div [] [ text ("X: " ++ (toString <| Tuple.first point)) ]
+        , div [] [ text ("Y: " ++ (toString <| Tuple.second point)) ]
+        , div [] [ text ("Distance: " ++ (toString <| distance point)) ]
+        ]
+
+
+distance : Point -> Int
+distance point =
     let
-        actor =
-            model.actor
+        ( x, y ) =
+            point
     in
-        div []
-            [ button [ onClick Step ] [ text "Step" ]
-            , button [ onClick Travel ] [ text "Travel" ]
-            , viewActor "Current" actor
-            , viewActor "Original" initModel.actor
-            , div [] [ text ("Distance: " ++ (showDistance actor.location)) ]
-            ]
+        (abs x) + (abs y)
 
 
-viewActor : String -> Actor -> Html Msg
-viewActor name actor =
+lastItem : List a -> Maybe a
+lastItem list =
+    List.foldl (\x _ -> Just x) Nothing list
+
+
+move : CardinalInstruction -> List Point -> List Point
+move instruction points =
+    case lastItem points of
+        Just x ->
+            generatePoints instruction x
+
+        Nothing ->
+            []
+
+
+generatePoints : CardinalInstruction -> Point -> List Point
+generatePoints instruction start =
     let
-        x =
-            "Y: " ++ (toString actor.location.x)
+        newInstruction =
+            Tuple.mapSecond ((+) -1) instruction
 
-        y =
-            "X: " ++ (toString actor.location.y)
+        newStart =
+            case (Tuple.first instruction) of
+                North ->
+                    Tuple.mapSecond ((+) 1) start
 
-        direction =
-            "Dir: " ++ (toString actor.direction)
+                East ->
+                    Tuple.mapFirst ((+) 1) start
 
-        spanStyle =
-            style [ ( "margin-right", "10px" ) ]
+                South ->
+                    Tuple.mapSecond ((+) -1) start
 
-        containerStyle =
-            style [ ( "width", "200px" ), ( "margin", "10px" ) ]
+                West ->
+                    Tuple.mapFirst ((+) -1) start
     in
-        div
-            [ containerStyle ]
-            [ div [] [ text name ]
-            , span [ spanStyle ] [ text y ]
-            , span [ spanStyle ] [ text x ]
-            , span [ spanStyle ] [ text direction ]
-            ]
+        if (Tuple.second newInstruction) >= 0 then
+            newStart :: generatePoints newInstruction newStart
+        else
+            []
 
 
-showDistance : Location -> String
-showDistance loc =
+translateInstruction : Instruction -> CardinalInstruction -> CardinalInstruction
+translateInstruction instruction priorCardinalInstruction =
+    Tuple.mapFirst (turn <| Tuple.first priorCardinalInstruction) instruction
+
+
+turn : CardinalDirection -> Direction -> CardinalDirection
+turn facing direction =
     let
-        x =
-            abs loc.x
+        compass =
+            [ North, East, South, West ]
 
-        y =
-            abs loc.y
+        indexOfFacing =
+            case getIndex facing compass of
+                Just x ->
+                    x
+
+                Nothing ->
+                    Debug.crash ""
+
+        newIndex =
+            case direction of
+                Right ->
+                    (indexOfFacing + 1) % 4
+
+                Left ->
+                    (indexOfFacing - 1) % 4
+
+        newDirection =
+            case Array.get newIndex (Array.fromList compass) of
+                Just x ->
+                    x
+
+                Nothing ->
+                    Debug.crash ""
     in
-        toString (x + y)
+        newDirection
 
 
-instSet1 : List Instruction
-instSet1 =
-    [ Right 2
-    , Left 3
-    ]
+getIndex : a -> List a -> Maybe Int
+getIndex e list =
+    case list of
+        x :: xs ->
+            if x == e then
+                Just 0
+            else
+                case getIndex e xs of
+                    Just n ->
+                        Just (n + 1)
+
+                    Nothing ->
+                        Nothing
+
+        [] ->
+            Nothing
 
 
-instSet2 : List Instruction
-instSet2 =
-    [ Right 2
-    , Right 2
-    , Right 2
-    ]
-
-
-instSet3 : List Instruction
-instSet3 =
-    [ Right 5
-    , Left 5
-    , Right 5
-    , Right 3
-    ]
-
-
-instSet4 : List Instruction
-instSet4 =
-    [ Left 4
-    , Left 3
-    , Right 1
-    , Left 4
-    , Right 2
-    , Right 2
-    , Left 1
-    , Left 2
-    , Right 1
-    , Right 1
-    , Left 3
-    , Right 5
-    , Left 2
-    , Right 5
-    , Left 4
-    , Left 3
-    , Right 2
-    , Right 2
-    , Left 5
-    , Left 1
-    , Right 4
-    , Left 1
-    , Right 3
-    , Left 3
-    , Right 5
-    , Right 2
-    , Left 5
-    , Right 2
-    , Right 1
-    , Right 1
-    , Left 5
-    , Right 1
-    , Left 3
-    , Left 2
-    , Left 5
-    , Right 4
-    , Right 4
-    , Left 2
-    , Left 1
-    , Left 1
-    , Right 1
-    , Right 1
-    , Left 185
-    , Right 4
-    , Left 1
-    , Left 1
-    , Right 5
-    , Right 1
-    , Left 1
-    , Left 3
-    , Left 2
-    , Left 1
-    , Right 2
-    , Right 2
-    , Right 2
-    , Left 1
-    , Left 1
-    , Right 4
-    , Right 5
-    , Right 53
-    , Left 1
-    , Right 1
-    , Right 78
-    , Right 3
-    , Right 4
-    , Left 1
-    , Right 5
-    , Left 1
-    , Left 4
-    , Right 3
-    , Right 3
-    , Left 3
-    , Left 3
-    , Right 191
-    , Right 4
-    , Right 1
-    , Left 4
-    , Left 1
-    , Right 3
-    , Left 1
-    , Left 2
-    , Right 3
-    , Right 2
-    , Right 4
-    , Right 5
-    , Right 5
-    , Left 3
-    , Left 5
-    , Right 2
-    , Right 3
-    , Left 1
-    , Left 1
-    , Left 3
-    , Right 1
-    , Right 4
-    , Right 1
-    , Right 3
-    , Right 4
-    , Right 4
-    , Right 4
-    , Right 5
-    , Right 2
-    , Left 5
-    , Right 1
-    , Right 2
-    , Right 5
-    , Left 3
-    , Left 4
-    , Right 1
-    , Left 5
-    , Right 1
-    , Left 4
-    , Left 3
-    , Right 5
-    , Right 5
-    , Left 3
-    , Left 4
-    , Left 4
-    , Right 2
-    , Right 2
-    , Left 5
-    , Right 3
-    , Right 1
-    , Right 2
-    , Right 5
-    , Left 5
-    , Left 3
-    , Right 4
-    , Left 5
-    , Right 5
-    , Left 3
-    , Right 1
-    , Left 1
-    , Right 4
-    , Right 4
-    , Left 3
-    , Right 2
-    , Right 5
-    , Right 1
-    , Right 2
-    , Left 1
-    , Right 4
-    , Right 1
-    , Left 3
-    , Left 3
-    , Left 5
-    , Right 2
-    , Right 5
-    , Left 1
-    , Left 4
-    , Right 3
-    , Right 3
-    , Left 3
-    , Right 2
-    , Left 5
-    , Right 1
-    , Right 3
-    , Left 3
-    , Right 2
-    , Left 1
-    , Right 4
-    , Right 3
-    , Left 4
-    , Right 5
-    , Left 2
-    , Left 2
-    , Right 5
-    , Right 1
-    , Right 2
-    , Left 4
-    , Left 4
-    , Left 5
-    , Right 3
-    , Left 4
+instructions : List ( Direction, Int )
+instructions =
+    [ ( Left, 4 )
+    , ( Left, 3 )
+    , ( Right, 1 )
+    , ( Left, 4 )
+    , ( Right, 2 )
+    , ( Right, 2 )
+    , ( Left, 1 )
+    , ( Left, 2 )
+    , ( Right, 1 )
+    , ( Right, 1 )
+    , ( Left, 3 )
+    , ( Right, 5 )
+    , ( Left, 2 )
+    , ( Right, 5 )
+    , ( Left, 4 )
+    , ( Left, 3 )
+    , ( Right, 2 )
+    , ( Right, 2 )
+    , ( Left, 5 )
+    , ( Left, 1 )
+    , ( Right, 4 )
+    , ( Left, 1 )
+    , ( Right, 3 )
+    , ( Left, 3 )
+    , ( Right, 5 )
+    , ( Right, 2 )
+    , ( Left, 5 )
+    , ( Right, 2 )
+    , ( Right, 1 )
+    , ( Right, 1 )
+    , ( Left, 5 )
+    , ( Right, 1 )
+    , ( Left, 3 )
+    , ( Left, 2 )
+    , ( Left, 5 )
+    , ( Right, 4 )
+    , ( Right, 4 )
+    , ( Left, 2 )
+    , ( Left, 1 )
+    , ( Left, 1 )
+    , ( Right, 1 )
+    , ( Right, 1 )
+    , ( Left, 185 )
+    , ( Right, 4 )
+    , ( Left, 1 )
+    , ( Left, 1 )
+    , ( Right, 5 )
+    , ( Right, 1 )
+    , ( Left, 1 )
+    , ( Left, 3 )
+    , ( Left, 2 )
+    , ( Left, 1 )
+    , ( Right, 2 )
+    , ( Right, 2 )
+    , ( Right, 2 )
+    , ( Left, 1 )
+    , ( Left, 1 )
+    , ( Right, 4 )
+    , ( Right, 5 )
+    , ( Right, 53 )
+    , ( Left, 1 )
+    , ( Right, 1 )
+    , ( Right, 78 )
+    , ( Right, 3 )
+    , ( Right, 4 )
+    , ( Left, 1 )
+    , ( Right, 5 )
+    , ( Left, 1 )
+    , ( Left, 4 )
+    , ( Right, 3 )
+    , ( Right, 3 )
+    , ( Left, 3 )
+    , ( Left, 3 )
+    , ( Right, 191 )
+    , ( Right, 4 )
+    , ( Right, 1 )
+    , ( Left, 4 )
+    , ( Left, 1 )
+    , ( Right, 3 )
+    , ( Left, 1 )
+    , ( Left, 2 )
+    , ( Right, 3 )
+    , ( Right, 2 )
+    , ( Right, 4 )
+    , ( Right, 5 )
+    , ( Right, 5 )
+    , ( Left, 3 )
+    , ( Left, 5 )
+    , ( Right, 2 )
+    , ( Right, 3 )
+    , ( Left, 1 )
+    , ( Left, 1 )
+    , ( Left, 3 )
+    , ( Right, 1 )
+    , ( Right, 4 )
+    , ( Right, 1 )
+    , ( Right, 3 )
+    , ( Right, 4 )
+    , ( Right, 4 )
+    , ( Right, 4 )
+    , ( Right, 5 )
+    , ( Right, 2 )
+    , ( Left, 5 )
+    , ( Right, 1 )
+    , ( Right, 2 )
+    , ( Right, 5 )
+    , ( Left, 3 )
+    , ( Left, 4 )
+    , ( Right, 1 )
+    , ( Left, 5 )
+    , ( Right, 1 )
+    , ( Left, 4 )
+    , ( Left, 3 )
+    , ( Right, 5 )
+    , ( Right, 5 )
+    , ( Left, 3 )
+    , ( Left, 4 )
+    , ( Left, 4 )
+    , ( Right, 2 )
+    , ( Right, 2 )
+    , ( Left, 5 )
+    , ( Right, 3 )
+    , ( Right, 1 )
+    , ( Right, 2 )
+    , ( Right, 5 )
+    , ( Left, 5 )
+    , ( Left, 3 )
+    , ( Right, 4 )
+    , ( Left, 5 )
+    , ( Right, 5 )
+    , ( Left, 3 )
+    , ( Right, 1 )
+    , ( Left, 1 )
+    , ( Right, 4 )
+    , ( Right, 4 )
+    , ( Left, 3 )
+    , ( Right, 2 )
+    , ( Right, 5 )
+    , ( Right, 1 )
+    , ( Right, 2 )
+    , ( Left, 1 )
+    , ( Right, 4 )
+    , ( Right, 1 )
+    , ( Left, 3 )
+    , ( Left, 3 )
+    , ( Left, 5 )
+    , ( Right, 2 )
+    , ( Right, 5 )
+    , ( Left, 1 )
+    , ( Left, 4 )
+    , ( Right, 3 )
+    , ( Right, 3 )
+    , ( Left, 3 )
+    , ( Right, 2 )
+    , ( Left, 5 )
+    , ( Right, 1 )
+    , ( Right, 3 )
+    , ( Left, 3 )
+    , ( Right, 2 )
+    , ( Left, 1 )
+    , ( Right, 4 )
+    , ( Right, 3 )
+    , ( Left, 4 )
+    , ( Right, 5 )
+    , ( Left, 2 )
+    , ( Left, 2 )
+    , ( Right, 5 )
+    , ( Right, 1 )
+    , ( Right, 2 )
+    , ( Left, 4 )
+    , ( Left, 4 )
+    , ( Left, 5 )
+    , ( Right, 3 )
+    , ( Left, 4 )
     ]
