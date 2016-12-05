@@ -86,21 +86,37 @@ parseDirections =
     String.toList >> List.filterMap parseDirection
 
 
-parseCode : List String -> List (List Direction)
+parseCode : List String -> Parser
 parseCode =
     List.map parseDirections
 
 
-solve : Keypad -> List String -> Position -> String
-solve keypad code position =
-    List.scanl (solveDigit keypad) position (parseCode code)
-        |> List.map (getKey keypad)
-        |> List.filterMap identity
-        |> List.tail
-        |> answerToString
+type alias Parser =
+    List (List Direction)
 
 
-solveDigit : Keypad -> List Direction -> Position -> Position
+type alias Decoder =
+    List Direction -> Position -> Position
+
+
+type alias Translator =
+    List Position -> String
+
+
+solve : Decoder -> Position -> Parser -> List Position
+solve =
+    List.scanl
+
+
+resultsTranslator : Keypad -> Translator
+resultsTranslator keypad =
+    List.map (getKey keypad)
+        >> List.filterMap identity
+        >> List.tail
+        >> answerToString
+
+
+solveDigit : Keypad -> Decoder
 solveDigit keypad directions startPosition =
     List.foldl (movePosition keypad) startPosition directions
 
@@ -179,10 +195,18 @@ update msg model =
         Solve ->
             let
                 answer1 =
-                    solve normalKeypad actualCode ( 2, 2 )
+                    solve
+                        (solveDigit normalKeypad)
+                        ( 2, 2 )
+                        (parseCode actualCode)
+                        |> (resultsTranslator normalKeypad)
 
                 answer2 =
-                    solve advancedKeypad actualCode ( 1, 3 )
+                    solve
+                        (solveDigit advancedKeypad)
+                        ( 1, 3 )
+                        (parseCode actualCode)
+                        |> (resultsTranslator advancedKeypad)
             in
                 ( { model | answer1 = answer1, answer2 = answer2 }, Cmd.none )
 
