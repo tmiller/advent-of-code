@@ -4,6 +4,7 @@ import Data.Ord (comparing)
 main :: IO ()
 main = do
   putStrLn $ show $ map mostFreq $ map frequency $ rotateList input
+  putStrLn $ show $ map leastFreq $ map frequency $ rotateList input
 
 frequency :: String -> [(Int, Char)]
 frequency list =
@@ -24,6 +25,10 @@ sortFreq =
 sortFreqDesc :: [(Int, Char)] -> [(Int, Char)]
 sortFreqDesc =
   reverse . sortFreq 
+
+leastFreq :: [(Int, Char)] -> Char
+leastFreq =
+  snd . head . sortFreq
 
 mostFreq :: [(Int, Char)] -> Char
 mostFreq =
