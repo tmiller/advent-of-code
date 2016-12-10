@@ -6,3 +6,5 @@ elm.js
 *.o
 *.hi
 main
+*-exe
+.stack-work
