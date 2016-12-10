@@ -1,13 +1,28 @@
-import Data.Char (isAlpha, isDigit)
-import Data.List (sort, group, sortBy, filter, takeWhile, dropWhile)
+import Data.Char (isAlpha, isDigit, ord, chr)
+import Data.List (sort, group, sortBy, filter, takeWhile, dropWhile, isInfixOf)
 import Data.Ord (comparing)
 
 main :: IO ()
 main =
-    putStrLn $ show $ sum $ map generate (map separate input1)
+    -- putStrLn $ show $ sum $ map generate (map separate input1)
+    putStrLn $ show $ filter ((isInfixOf "object storage") . fst) $ map decrypt (map separate input1)
 
-generate :: (String, Integer, String) -> Integer
-generate (input, num, sum) 
+
+decrypt :: (String, Int, String) -> (String, Int)
+decrypt (input, num, sum)
+  | validate input sum = (map (decode num) input, num)
+  | otherwise = ("",0)
+
+decode :: Int -> Char -> Char
+decode n c
+  | c == '-' = ' '
+  | otherwise = chr $ (((c' - o') + n) `mod` 26) + o'
+  where
+    o' = ord 'a'
+    c' = ord c
+
+generate :: (String, Int, String) -> Int
+generate (input, num, sum)
   | validate input sum = num
   | otherwise = 0
 
@@ -15,14 +30,14 @@ validate :: String -> String -> Bool
 validate input sum =
   (checksum input) == sum
 
-separate :: String -> (String, Integer, String)
+separate :: String -> (String, Int, String)
 separate code = (message, number, sum)
   where
     message = takeWhile (not . isDigit) code
     number = read $ filter (isDigit) code
     sum = filter isAlpha $ dropWhile (/= '[')  code
 
-checksum :: [Char] -> [Char] 
+checksum :: [Char] -> [Char]
 checksum list =
   take 5
   $ map snd
