@@ -1,2 +1,7 @@
+# Elm
 elm-stuff
 elm.js
+
+# Haskell
+*.o
+*.hi
