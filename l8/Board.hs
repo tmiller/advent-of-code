@@ -1,7 +1,9 @@
 module Board (Board, Board.init, process, showBoard, paintCell, paintBoard)
 where
 
-import Parser (Instruction (..), Axis)
+import Data.List (transpose)
+
+import Parser (Instruction (..), Axis (..))
 
 type Board = [[Bool]]
 
@@ -12,14 +14,23 @@ init =
 showBoard :: Board -> [String]
 showBoard = map (map showBool)
 
+
 showBool :: Bool -> Char
 showBool (True)  = 'X'
-showBool (False) = '.'
+showBool (False) = ' '
 
 
 process :: Board -> Instruction -> Board
 process board (Rect x y) = paintBoard board x y
+process board (Rotate Row i n) = rotate board i n
+process board (Rotate Column i n) = transpose $ rotate (transpose board) i n
 process board _ = board
+
+
+rotate :: Board -> Int -> Int -> Board
+rotate board i n =
+  replaceNth i (shift n (board !! i)) board
+
 
 paintBoard :: Board -> Int -> Int -> Board
 paintBoard board x y =
@@ -27,10 +38,12 @@ paintBoard board x y =
   where
     cells = concat $ map (\y -> map (\x -> (x,y)) [0..(x-1)]) [0..(y-1)]
 
+
 paintCell :: Board -> (Int, Int) -> Board
 paintCell board (x,y) =
   replaceNth y (replaceNth x True (board !! y)) board
-  
+
+
 replaceNth :: Int -> a -> [a] -> [a]
 replaceNth n newVal (x:xs)
   | n == 0    = (newVal:xs)
@@ -39,4 +52,3 @@ replaceNth n newVal (x:xs)
 
 shift :: Int -> [a] -> [a]
 shift n xs = take (length xs) $ drop (negate n `mod` length xs) $ cycle xs
-

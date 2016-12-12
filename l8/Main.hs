@@ -2,19 +2,27 @@ module Main
 where
 
 import System.IO
+import Data.List (transpose, replicate)
 
 import qualified Parser
 import qualified Board
 
 main :: IO ()
-main = 
+main =
   withFile "input.txt" ReadMode (\handle -> do
-    -- contents <- hGetContents handle
-    mapM_ putStrLn
-      $ Board.showBoard
-      -- $ Board.paintBoard Board.init 3 2
-      -- $Board.process Board.init Parser.NoOp
-      $Board.process Board.init $ Parser.Rect 3 2
+    contents <- hGetContents handle
+    let instructions = Parser.parse contents
+    let boards = scanl Board.process Board.init instructions
+    let board = foldl Board.process Board.init instructions
+    printBoards boards
+    putStrLn $ show $ length $ filter id $ concat board
   )
 
--- putStrLn $ show $ Parser.parse contents
+
+printBoards board =  do
+  mapM_ printBoard board
+
+
+printBoard board = do
+  mapM_ putStrLn $ Board.showBoard board
+  putStrLn (replicate 50 '-')

@@ -20,6 +20,7 @@ data Instruction
 parse :: String -> [Instruction]
 parse = map parseInstruction . lines
 
+
 parseInstruction :: String -> Instruction
 parseInstruction raw
   | isPrefixOf "rect" raw          = (uncurry Rect) args
@@ -29,17 +30,18 @@ parseInstruction raw
   where
     args = parseNumericArgs raw
 
+
 parseNumericArgs :: String -> (Int, Int)
 parseNumericArgs raw =
   (read first, read second)
   where
     first = scanDigit raw
     second = scanDigit $ skipDigit raw
-      
+
 
 scanDigit :: String -> String
 scanDigit = takeWhile isDigit . dropWhile (not . isDigit)
 
+
 skipDigit :: String -> String
 skipDigit = dropWhile isDigit . dropWhile (not . isDigit)
-
