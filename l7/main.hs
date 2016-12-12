@@ -7,6 +7,7 @@ import Data.Function
 import Data.Ord
 
 import qualified TLS
+import qualified SSL
 import qualified Packet
 
 main :: IO ()
@@ -15,4 +16,5 @@ main =
     contents <- hGetContents handle
     let packets = lines contents
     putStrLn $ show $ length $ filter (TLS.validate . Packet.parsePacket) packets
+    putStrLn $ show $ length $ filter (SSL.validate . Packet.parsePacket) packets
   )
