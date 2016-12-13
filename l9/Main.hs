@@ -38,4 +38,10 @@ instruction = do
     nTimes <- Parsec.many1 Parsec.digit
     Parsec.char ')'
     strRepeat <- Parsec.count (read nChars) Parsec.anyChar
-    return (concat $ replicate (read nTimes) strRepeat)
+    let innerText = (concat $ replicate (read nTimes) strRepeat)
+    return (nestedParse innerText)
+
+nestedParse text =
+    case parse parser "(nested instructions)" text of
+        Left err -> ""
+        Right result -> concat result
