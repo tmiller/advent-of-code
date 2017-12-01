@@ -8,3 +8,6 @@ elm.js
 main
 *-exe
 .stack-work
+
+# Rust
+target
