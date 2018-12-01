@@ -1,7 +1,8 @@
 module Day1 where
 
-import Text.Read
+import Text.Trifecta
 import Data.Monoid
+import Data.Maybe (fromMaybe)
 import Data.Set as S
 import Data.Bool (bool)
 
@@ -13,20 +14,17 @@ part1 =  mconcat <$> getNumbers >>= display
 
 part2 :: IO String
 part2 = findDuplicate <$> scan <$> cycle <$> getNumbers >>= display
-  where scan = scanl (<>) (Just (Sum 0))
+  where scan = scanl (<>) (Sum 0)
 
-getNumbers :: IO [Maybe (Sum Integer)]
-getNumbers = fmap parseInt <$> lines <$> readFile input
+getNumbers :: IO [Sum Integer]
+getNumbers = fromMaybe [] <$> parseFromFile p input
+  where p = ((Sum <$> integer) `sepBy` whiteSpace) <* eof
 
-parseInt :: String -> Maybe (Sum Integer)
-parseInt ('+' : xs) = Sum <$> readMaybe xs
-parseInt ('-' : xs) = Sum <$> negate <$> readMaybe xs
-parseInt _          = Nothing
 
-findDuplicate :: Ord a => [Maybe a] -> Maybe a
+findDuplicate :: (Monoid a, Ord a) => [a] -> a
 findDuplicate xs = go xs S.empty
-  where go []      _    = Nothing
+  where go []      _    = mempty
         go (x:xs') seen = bool (go xs' (S.insert x seen)) x (S.member x seen)
 
-display :: Maybe (Sum Integer) -> IO String
-display = return . show . fmap getSum
+display :: Sum Integer -> IO String
+display = return . show . getSum
