@@ -24,9 +24,11 @@ dependencies:
 
 library:
   source-dirs: src
+  dependencies:
+    - containers
 
 executables:
-  AdventOfCode-exe:
+  2018:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
