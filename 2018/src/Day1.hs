@@ -9,10 +9,10 @@ input :: String
 input = "data/day1.txt"
 
 part1 :: IO String
-part1 = show <$> mconcat <$> getNumbers
+part1 =  mconcat <$> getNumbers >>= display
 
 part2 :: IO String
-part2 = show <$> findDuplicate <$> scan <$> cycle <$> getNumbers
+part2 = findDuplicate <$> scan <$> cycle <$> getNumbers >>= display
   where scan = scanl (<>) (Just (Sum 0))
 
 getNumbers :: IO [Maybe (Sum Integer)]
@@ -27,3 +27,6 @@ findDuplicate :: Ord a => [Maybe a] -> Maybe a
 findDuplicate xs = go xs S.empty
   where go []      _    = Nothing
         go (x:xs') seen = bool (go xs' (S.insert x seen)) x (S.member x seen)
+
+display :: Maybe (Sum Integer) -> IO String
+display = return . show . fmap getSum
