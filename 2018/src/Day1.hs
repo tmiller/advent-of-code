@@ -20,6 +20,7 @@ parseFile :: IO (Either ParseErrorBundle [Sum Integer])
 parseFile = parse (many (Sum <$> integer) <* eof) input <$> readFile input
 
 findDuplicate :: (Monoid a, Ord a) => [a] -> a
-findDuplicate xs = go xs S.empty
-  where go []      _    = mempty
-        go (x:xs') seen = bool (go xs' (S.insert x seen)) x (S.member x seen)
+findDuplicate = go S.empty
+  where go _ []                    = mempty
+        go s (x:xs) | S.member x s = x
+                    | otherwise    = go (S.insert x s) xs
