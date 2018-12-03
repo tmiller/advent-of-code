@@ -27,6 +27,7 @@ library:
   dependencies:
     - containers
     - megaparsec
+    - multiset >= 0.3.4.1
 
 executables:
   2018:
